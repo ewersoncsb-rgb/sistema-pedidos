@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Solicitação de Pedidos</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Sistema de Solicitação de Pedidos</h1>
+    <button id="logoutBtn" class="hidden">Sair</button>
+  </header>
+
+  <nav>
+    <button onclick="mostrarAba('login')">Login / Cadastro</</button>
+    <button onclick="mostrarAba('pedido')">Fazer Pedido</button>
+    <button class="adminOnly hidden" onclick="mostrarAba('almoxarifado')">Almoxarifado</button>
+    <button class="adminOnly hidden" onclick="mostrarAba('pedidosAdmin')">Pedidos (Admin)</button>
+    <button class="adminOnly hidden" onclick="mostrarAba('relatorios')">Relatórios</button>
+  </nav>
+
+  <main>
+    <!-- Login -->
+    <section id="login" class="aba">
+      <h2>Login</h2>
+      <input type="email" id="loginEmail" placeholder="Email">
+      <input type="password" id="loginSenha" placeholder="Senha">
+      <button onclick="login()">Entrar</button>
+      <p>Não tem conta? <a href="#" onclick="mostrarAba('cadastro')">Cadastrar</a></p>
+    </section>
+
+    <!-- Cadastro -->
+    <section id="cadastro" class="aba hidden">
+      <h2>Criar Conta</h2>
+      <input type="text" id="cadastroNome" placeholder="Nome completo">
+      <input type="email" id="cadastroEmail" placeholder="Email">
+      <input type="password" id="cadastroSenha" placeholder="Senha">
+      <select id="cadastroConsultorio">
+        <option>Consultório 01</option>
+        <option>Consultório 02</option>
+        <option>Consultório 03</option>
+        <option>Consultório 04</option>
+      </select>
+      <button onclick="cadastrar()">Cadastrar</button>
+    </section>
+
+    <!-- Pedido -->
+    <section id="pedido" class="aba hidden">
+      <h2>Fazer Pedido</h2>
+      <input type="text" id="pedidoItem" placeholder="Item">
+      <input type="number" id="pedidoQtd" placeholder="Quantidade">
+      <textarea id="pedidoObs" placeholder="Observações"></textarea>
+      <button onclick="fazerPedido()">Enviar Pedido</button>
+
+      <h3>Meus pedidos</h3>
+      <table>
+        <thead><tr><th>Item</th><th>Qtd</th><th>Status</th><th>Justificativa</th></tr></thead>
+        <tbody id="minhaListaPedidos"></tbody>
+      </table>
+    </section>
+
+    <!-- Almoxarifado -->
+    <section id="almoxarifado" class="aba hidden adminOnly">
+      <h2>Almoxarifado</h2>
+      <p>Gerenciar estoque aqui...</p>
+    </section>
+
+    <!-- Pedidos Admin -->
+    <section id="pedidosAdmin" class="aba hidden adminOnly">
+      <h2>Todos os Pedidos</h2>
+      <table>
+        <thead><tr><th>Consultório</th><th>Item</th><th>Qtd</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody id="listaPedidosAdmin"></tbody>
+      </table>
+    </section>
+
+    <!-- Relatórios -->
+    <section id="relatorios" class="aba hidden adminOnly">
+      <h2>Relatórios</h2>
+      <div id="relatoriosArea"></div>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
