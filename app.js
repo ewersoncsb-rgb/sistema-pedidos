@@ -1,16 +1,42 @@
-// Import Firebase SDKs
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+// Importando Firebase (versão modular)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// Configuração Firebase (use suas credenciais reais)
-const firebaseConfig = {
-  apiKey: "SUA_API_KEY",
-  authDomain: "SEU_PROJECT_ID.firebaseapp.com",
-  projectId: "SEU_PROJECT_ID",
-  storageBucket: "SEU_PROJECT_ID.appspot.com",
-  messagingSenderId: "SEU_MESSAGING_SENDER_ID",
-  appId: "SEU_APP_ID"
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Usuários
+    match /users/{userId} {
+      // Cada usuário só pode ler/editar o próprio perfil
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      // Admin pode ler todos os perfis
+      allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      // Criação de conta feita pelo sistema (auth já cuida do cadastro)
+      allow create: if request.auth != null;
+    }
+
+    // Itens (almoxarifado)
+    match /items/{itemId} {
+      // Apenas admin pode gerenciar o estoque
+      allow read: if request.auth != null; // todos podem visualizar
+      allow create, update, delete: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Pedidos
+    match /requests/{requestId} {
+      // Usuário pode criar pedidos e ver apenas os próprios
+      allow create: if request.auth != null;
+      allow read: if request.auth != null &&
+        (resource.data.userId == request.auth.uid ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
+      // Admin pode atualizar status (atendido, etc.)
+      allow update: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+  }
 };
 
 // Inicializar Firebase
@@ -18,114 +44,61 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Controle de abas
-window.mostrarAba = function(id) {
-  document.querySelectorAll('.aba').forEach(a => a.classList.add('hidden'));
-  document.getElementById(id).classList.remove('hidden');
-};
+// Função de Login
+async function login() {
+  const email = document.getElementById("loginEmail").value;
+  const senha = document.getElementById("loginSenha").value;
 
-// Login
-window.login = async function() {
-  const email = document.getElementById('loginEmail').value;
-  const senha = document.getElementById('loginSenha').value;
   try {
-    const userCred = await signInWithEmailAndPassword(auth, email, senha);
-    alert('Login realizado com sucesso!');
-    document.getElementById('logoutBtn').classList.remove('hidden');
-    verificarAdmin(email);
-    mostrarAba('pedido');
-    carregarPedidosUsuario(email);
-    carregarPedidosAdmin();
-  } catch (e) {
-    alert('Erro no login: ' + e.message);
+    await signInWithEmailAndPassword(auth, email, senha);
+    alert("Login realizado com sucesso!");
+    mostrarAba("fazerPedido");
+  } catch (error) {
+    alert("Erro no login: " + error.message);
   }
-};
+}
 
-// Cadastro
-window.cadastrar = async function() {
-  const nome = document.getElementById('cadastroNome').value;
-  const email = document.getElementById('cadastroEmail').value;
-  const senha = document.getElementById('cadastroSenha').value;
-  const consultorio = document.getElementById('cadastroConsultorio').value;
+// Função de Cadastro
+async function cadastrar() {
+  const email = document.getElementById("cadastroEmail").value;
+  const senha = document.getElementById("cadastroSenha").value;
+
   try {
     await createUserWithEmailAndPassword(auth, email, senha);
-    alert('Cadastro realizado com sucesso! Faça login.');
-    mostrarAba('login');
-  } catch (e) {
-    alert('Erro no cadastro: ' + e.message);
+    alert("Cadastro realizado com sucesso!");
+    mostrarAba("loginCadastro");
+  } catch (error) {
+    alert("Erro no cadastro: " + error.message);
   }
-};
+}
 
 // Logout
-document.getElementById('logoutBtn').addEventListener('click', async () => {
-  await signOut(auth);
-  alert('Logout realizado');
-  document.getElementById('logoutBtn').classList.add('hidden');
-  mostrarAba('login');
-});
-
-// Fazer pedido
-window.fazerPedido = async function() {
-  const item = document.getElementById('pedidoItem').value;
-  const qtd = document.getElementById('pedidoQtd').value;
-  const obs = document.getElementById('pedidoObs').value;
-  const user = auth.currentUser;
-  if (!user) return alert('Faça login');
+async function logout() {
   try {
-    await addDoc(collection(db, 'pedidos'), {
-      item, qtd, obs, email: user.email, status: 'Pendente', justificativa: ''
-    });
-    alert('Pedido enviado');
-    carregarPedidosUsuario(user.email);
-    carregarPedidosAdmin();
-  } catch (e) {
-    alert('Erro ao enviar pedido: ' + e.message);
+    await signOut(auth);
+    alert("Você saiu da conta.");
+    mostrarAba("loginCadastro");
+  } catch (error) {
+    alert("Erro ao sair: " + error.message);
   }
-};
-
-// Verifica se usuário é admin
-function verificarAdmin(email) {
-  const adminEmail = "admin@clinica.test"; // ajuste conforme seu Firebase
-  document.querySelectorAll('.adminOnly').forEach(el => {
-    if (email === adminEmail) el.classList.remove('hidden');
-    else el.classList.add('hidden');
-  });
 }
 
-// Carregar pedidos do usuário
-async function carregarPedidosUsuario(email) {
-  const q = query(collection(db, 'pedidos'), where('email', '==', email));
-  const snap = await getDocs(q);
-  const tbody = document.getElementById('minhaListaPedidos');
-  tbody.innerHTML = '';
-  snap.forEach(docSnap => {
-    const p = docSnap.data();
-    tbody.innerHTML += `<tr><td>${p.item}</td><td>${p.qtd}</td><td>${p.status}</td><td>${p.justificativa || ''}</td></tr>`;
-  });
+// Mostrar abas
+function mostrarAba(aba) {
+  const abas = document.querySelectorAll(".aba");
+  abas.forEach(div => div.style.display = "none");
+
+  document.getElementById(aba).style.display = "block";
 }
 
-// Carregar pedidos para admin
-async function carregarPedidosAdmin() {
-  const tbody = document.getElementById('listaPedidosAdmin');
-  if (!tbody) return;
-  const snap = await getDocs(collection(db, 'pedidos'));
-  tbody.innerHTML = '';
-  snap.forEach(docSnap => {
-    const p = docSnap.data();
-    tbody.innerHTML += `<tr>
-      <td>${p.email}</td><td>${p.item}</td><td>${p.qtd}</td><td>${p.status}</td>
-      <td>
-        <button onclick="atualizarPedido('${docSnap.id}','Atendido')">Atendido</button>
-        <button onclick="atualizarPedido('${docSnap.id}','Parcialmente','Necessário aguardar')">Parcial</button>
-      </td>
-    </tr>`;
-  });
+// Mostrar aba de cadastro
+function mostrarCadastro() {
+  mostrarAba("cadastro");
 }
 
-// Atualizar pedido (Admin)
-window.atualizarPedido = async function(id, status, justificativa='') {
-  const ref = doc(db, 'pedidos', id);
-  await updateDoc(ref, { status, justificativa });
-  alert('Pedido atualizado');
-  carregarPedidosAdmin();
-};
+// Expor funções para o HTML
+window.login = login;
+window.cadastrar = cadastrar;
+window.logout = logout;
+window.mostrarAba = mostrarAba;
+window.mostrarCadastro = mostrarCadastro;
