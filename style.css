@@ -1,0 +1,7 @@
+body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; }
+h1 { color: #1a73e8; }
+nav { margin-bottom: 20px; }
+button { margin: 5px; padding: 10px 15px; background: #1a73e8; color: white; border: none; cursor: pointer; border-radius: 5px; }
+button:hover { background: #155ab6; }
+.aba { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+input { display: block; margin: 10px 0; padding: 10px; width: 250px; }
